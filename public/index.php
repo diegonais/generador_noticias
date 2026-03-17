@@ -23,7 +23,7 @@ $apiEndpoint = '/api/news.php';
                 </div>
             </div>
             <p class="hero-copy">
-                Noticias recientes obtenidas de la Agencia Boliviana de Información.
+                Noticias recientes obtenidas de la Agencia Boliviana de Informacion.
             </p>
         </header>
 
@@ -58,6 +58,8 @@ $apiEndpoint = '/api/news.php';
             <p>Desarrollado por <?php echo htmlspecialchars(FOOTER_AUTHOR, ENT_QUOTES, 'UTF-8'); ?> | <?php echo date('Y'); ?></p>
         </footer>
     </div>
+
+    <button id="back-to-top" class="back-to-top" type="button" aria-label="Volver arriba">Subir</button>
 
     <noscript>
         <div class="noscript-message">Este portal necesita JavaScript habilitado para mostrar las noticias.</div>

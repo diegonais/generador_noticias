@@ -1,4 +1,6 @@
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=America/La_Paz
+TZ=America/La_Paz
 
 0 */6 * * * cd /var/www/html && /usr/local/bin/php scripts/update_news.php >> storage/logs/update.log 2>&1

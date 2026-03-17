@@ -49,6 +49,8 @@ $newsId = isset($_GET['id']) ? (string) $_GET['id'] : '';
         </footer>
     </div>
 
+    <button id="back-to-top" class="back-to-top" type="button" aria-label="Volver arriba">Subir</button>
+
     <script src="./assets/js/news-detail.js" defer></script>
 </body>
 </html>

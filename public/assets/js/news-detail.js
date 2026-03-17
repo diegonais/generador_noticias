@@ -2,6 +2,7 @@ const detailShell = document.querySelector('.detail-shell');
 const detailLoading = document.querySelector('#detail-loading');
 const detailError = document.querySelector('#detail-error');
 const detailArticle = document.querySelector('#news-detail');
+const backToTopButton = document.querySelector('#back-to-top');
 
 const detailEndpointCandidates = Array.from(new Set([
     detailShell ? detailShell.dataset.apiEndpoint : null,
@@ -12,6 +13,7 @@ const detailEndpointCandidates = Array.from(new Set([
 const requestedId = detailShell ? detailShell.dataset.newsId : '';
 
 document.addEventListener('DOMContentLoaded', function () {
+    setupBackToTop();
     loadNewsDetail();
 });
 
@@ -100,8 +102,8 @@ function renderDetail(item) {
 
 function normalizeArticleText(text) {
     return String(text || '')
-        .replace(/\s*Navegaci[oó]n de entradas.*$/iu, '')
-        .replace(/\s+[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑa-záéíóúñ]{1,5}(?:\/[A-ZÁÉÍÓÚÑ][A-Za-zÁÉÍÓÚÑa-záéíóúñ]{1,5})+\s*$/u, '')
+        .replace(/\s*Navegaci[oÃ³]n de entradas.*$/iu, '')
+        .replace(/\s+[A-ZÃÃ‰ÃÃ“ÃšÃ‘][A-Za-zÃÃ‰ÃÃ“ÃšÃ‘a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,5}(?:\/[A-ZÃÃ‰ÃÃ“ÃšÃ‘][A-Za-zÃÃ‰ÃÃ“ÃšÃ‘a-zÃ¡Ã©Ã­Ã³ÃºÃ±]{1,5})+\s*$/u, '')
         .replace(/\s+/g, ' ')
         .trim();
 }
@@ -131,6 +133,26 @@ function formatDate(dateString, withTime) {
         hour: '2-digit',
         minute: '2-digit',
     } : {})).format(date);
+}
+
+function setupBackToTop() {
+    if (!backToTopButton) {
+        return;
+    }
+
+    const toggleVisibility = function () {
+        backToTopButton.classList.toggle('is-visible', window.scrollY > 500);
+    };
+
+    backToTopButton.addEventListener('click', function () {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth',
+        });
+    });
+
+    window.addEventListener('scroll', toggleVisibility, { passive: true });
+    toggleVisibility();
 }
 
 function escapeHtml(value) {
