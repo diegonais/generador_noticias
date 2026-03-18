@@ -5,6 +5,7 @@ const errorState = document.querySelector('#error-state');
 const emptyState = document.querySelector('#empty-state');
 const lastUpdated = document.querySelector('#last-updated');
 const backToTopButton = document.querySelector('#back-to-top');
+const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 const endpointCandidates = Array.from(new Set([
     shell ? shell.dataset.apiEndpoint : null,
@@ -15,11 +16,14 @@ const endpointCandidates = Array.from(new Set([
 
 document.addEventListener('DOMContentLoaded', function () {
     setupBackToTop();
+    setupAutoRefresh();
     loadNews();
 });
 
-async function loadNews() {
-    setState('loading');
+async function loadNews(showLoadingState = true) {
+    if (showLoadingState) {
+        setState('loading');
+    }
 
     try {
         const payload = await fetchFromAvailableEndpoint();
@@ -45,7 +49,8 @@ async function fetchFromAvailableEndpoint() {
 
     for (const endpoint of endpointCandidates) {
         try {
-            const response = await fetch(endpoint, {
+            const response = await fetch(withCacheBuster(endpoint), {
+                cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
                 },
@@ -163,7 +168,19 @@ function formatDate(dateString, withTime = true) {
     }, withTime ? {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
     } : {})).format(date);
+}
+
+function withCacheBuster(endpoint) {
+    const separator = endpoint.indexOf('?') === -1 ? '?' : '&';
+
+    return endpoint + separator + '_=' + Date.now();
+}
+function setupAutoRefresh() {
+    window.setInterval(function () {
+        loadNews(false);
+    }, AUTO_REFRESH_INTERVAL_MS);
 }
 
 function setupBackToTop() {
@@ -198,4 +215,8 @@ function escapeHtml(value) {
 function escapeAttribute(value) {
     return escapeHtml(value);
 }
+
+
+
+
 

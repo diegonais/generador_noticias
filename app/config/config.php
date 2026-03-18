@@ -53,6 +53,15 @@ if (!function_exists('envValue')) {
     }
 }
 
+if (!function_exists('envFlag')) {
+    function envFlag($key, $default = false)
+    {
+        $value = strtolower((string) envValue($key, $default ? 'true' : 'false'));
+
+        return in_array($value, array('1', 'true', 'yes', 'on'), true);
+    }
+}
+
 $basePath = dirname(__DIR__, 2);
 
 loadEnvFile($basePath . DIRECTORY_SEPARATOR . '.env');
@@ -66,5 +75,9 @@ defined('LOG_PATH') || define('LOG_PATH', BASE_PATH . DIRECTORY_SEPARATOR . 'sto
 defined('CACHE_PATH') || define('CACHE_PATH', BASE_PATH . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'cache');
 defined('MAX_NEWS_ITEMS') || define('MAX_NEWS_ITEMS', (int) envValue('MAX_NEWS_ITEMS', 60));
 defined('FOOTER_AUTHOR') || define('FOOTER_AUTHOR', envValue('FOOTER_AUTHOR', 'Diego'));
+defined('SUPABASE_ENABLED') || define('SUPABASE_ENABLED', envFlag('SUPABASE_ENABLED', false));
+defined('SUPABASE_URL') || define('SUPABASE_URL', rtrim((string) envValue('SUPABASE_URL', ''), '/'));
+defined('SUPABASE_SERVICE_ROLE_KEY') || define('SUPABASE_SERVICE_ROLE_KEY', (string) envValue('SUPABASE_SERVICE_ROLE_KEY', ''));
+defined('SUPABASE_TABLE') || define('SUPABASE_TABLE', (string) envValue('SUPABASE_TABLE', 'news'));
 
 date_default_timezone_set(TIMEZONE);

@@ -1,43 +1,42 @@
 <?php
 
+require_once __DIR__ . '/SupabaseService.php';
+
 class StorageService
 {
+    private $supabaseService;
+
     public function __construct()
     {
         $this->ensureDirectories();
+        $this->supabaseService = new SupabaseService();
     }
 
     public function readNews()
     {
-        if (!is_file(NEWS_JSON_PATH) || !is_readable(NEWS_JSON_PATH)) {
-            return array();
+        if ($this->useSupabase()) {
+            $news = $this->supabaseService->fetchNews(MAX_NEWS_ITEMS);
+
+            if (is_array($news)) {
+                return $news;
+            }
         }
 
-        $content = file_get_contents(NEWS_JSON_PATH);
-
-        if (!is_string($content) || trim($content) === '') {
-            return array();
-        }
-
-        $decoded = json_decode($content, true);
-
-        return is_array($decoded) ? $decoded : array();
+        return $this->readLocalNews();
     }
 
     public function saveNews(array $news)
     {
         $this->ensureDirectories();
 
-        $json = json_encode(
-            array_values($news),
-            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-        );
+        if ($this->useSupabase()) {
+            $savedToSupabase = $this->supabaseService->upsertNews($news);
+            $savedLocally = $this->saveLocalNews($news);
 
-        if (!is_string($json)) {
-            return false;
+            return $savedToSupabase && $savedLocally;
         }
 
-        return file_put_contents(NEWS_JSON_PATH, $json . PHP_EOL, LOCK_EX) !== false;
+        return $this->saveLocalNews($news);
     }
 
     public function appendLog($message)
@@ -63,6 +62,56 @@ class StorageService
     }
 
     public function getLastUpdatedAt()
+    {
+        if ($this->useSupabase()) {
+            $updatedAt = $this->supabaseService->fetchLatestUpdatedAt();
+
+            if ($updatedAt !== null) {
+                return $updatedAt;
+            }
+        }
+
+        return $this->getLocalLastUpdatedAt();
+    }
+
+    private function useSupabase()
+    {
+        return $this->supabaseService instanceof SupabaseService
+            && $this->supabaseService->isConfigured();
+    }
+
+    private function readLocalNews()
+    {
+        if (!is_file(NEWS_JSON_PATH) || !is_readable(NEWS_JSON_PATH)) {
+            return array();
+        }
+
+        $content = file_get_contents(NEWS_JSON_PATH);
+
+        if (!is_string($content) || trim($content) === '') {
+            return array();
+        }
+
+        $decoded = json_decode($content, true);
+
+        return is_array($decoded) ? $decoded : array();
+    }
+
+    private function saveLocalNews(array $news)
+    {
+        $json = json_encode(
+            array_values($news),
+            JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+
+        if (!is_string($json)) {
+            return false;
+        }
+
+        return file_put_contents(NEWS_JSON_PATH, $json . PHP_EOL, LOCK_EX) !== false;
+    }
+
+    private function getLocalLastUpdatedAt()
     {
         if (!is_file(NEWS_JSON_PATH)) {
             return null;

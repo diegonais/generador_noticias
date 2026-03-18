@@ -18,7 +18,7 @@ $apiEndpoint = '/api/news.php';
             <div class="brand">
                 <div class="brand-mark" aria-hidden="true">ABI</div>
                 <div>
-                    <p class="eyebrow">Actualizacion automatica cada 10 minutos</p>
+                    <p class="eyebrow">Actualizacion automatica cada 5 minutos</p>
                     <h1><?php echo htmlspecialchars(APP_NAME, ENT_QUOTES, 'UTF-8'); ?></h1>
                 </div>
             </div>
@@ -68,3 +68,4 @@ $apiEndpoint = '/api/news.php';
     <script src="./assets/js/app.js" defer></script>
 </body>
 </html>
+

@@ -69,6 +69,7 @@ class TextHelper
         $cleaned = self::normalizeWhitespace((string) $cleaned);
         $cleaned = preg_replace('/\s*(?:\/\/\/|\/\/)[A-Za-z]{2,5}(?:\/\/\/|\/\/)\s*$/u', '', $cleaned);
         $cleaned = preg_replace('/\s*[A-Za-z]{2,5}(?:\/[A-Za-z]{2,5})+\s*$/u', '', $cleaned);
+        $cleaned = preg_replace('/([.!?\"])\s+[A-Z]{2,5}\s*$/u', '$1', $cleaned);
 
         return trim((string) $cleaned);
     }
@@ -88,3 +89,4 @@ class TextHelper
         return function_exists('mb_strrpos') ? mb_strrpos($text, $needle, 0, 'UTF-8') : strrpos($text, $needle);
     }
 }
+

@@ -50,7 +50,8 @@ async function fetchDetailPayload() {
 
     for (const endpoint of detailEndpointCandidates) {
         try {
-            const response = await fetch(endpoint, {
+            const response = await fetch(endpoint + (endpoint.indexOf('?') === -1 ? '?' : '&') + '_=' + Date.now(), {
+                cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
                 },
@@ -132,6 +133,7 @@ function formatDate(dateString, withTime) {
     }, withTime ? {
         hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
     } : {})).format(date);
 }
 
@@ -167,4 +169,7 @@ function escapeHtml(value) {
 function escapeAttribute(value) {
     return escapeHtml(value);
 }
+
+
+
 
