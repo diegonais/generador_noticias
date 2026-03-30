@@ -10,7 +10,6 @@ const filterYear = document.querySelector('#filter-year');
 const filterMonth = document.querySelector('#filter-month');
 const filterDay = document.querySelector('#filter-day');
 const filterToday = document.querySelector('#filter-today');
-const filterClear = document.querySelector('#filter-clear');
 const filterToggle = document.querySelector('#filter-toggle');
 const filtersPanel = document.querySelector('#filters-panel');
 const themeToggle = document.querySelector('#theme-toggle');
@@ -27,10 +26,25 @@ const endpointCandidates = Array.from(new Set([
 ].filter(Boolean)));
 
 let allNews = [];
+let hasInitializedDefaultFilter = false;
 
 const DAYS_IN_MONTH = 31;
 const DEFAULT_EMPTY_MESSAGE = 'Cuando el sistema vuelva a actualizarse, las publicaciones apareceran aqui.';
 const THEME_STORAGE_KEY = 'portal_theme';
+const MONTH_LABELS = {
+    1: 'Enero',
+    2: 'Febrero',
+    3: 'Marzo',
+    4: 'Abril',
+    5: 'Mayo',
+    6: 'Junio',
+    7: 'Julio',
+    8: 'Agosto',
+    9: 'Septiembre',
+    10: 'Octubre',
+    11: 'Noviembre',
+    12: 'Diciembre',
+};
 
 initializeTheme();
 
@@ -39,7 +53,6 @@ document.addEventListener('DOMContentLoaded', function () {
     setupBackToTop();
     setupFilters();
     setupFilterToggle();
-    applyTodayFilter();
     setupAutoRefresh();
     loadNews();
 });
@@ -56,6 +69,7 @@ async function loadNews(showLoadingState = true) {
         allNews = news;
         updateLastUpdated(payload && payload.updated_at ? payload.updated_at : null);
         refreshFilterOptions();
+        applyDefaultFilterIfNeeded();
         applyFiltersAndRender();
     } catch (error) {
         console.error('Error loading news:', error);
@@ -65,12 +79,11 @@ async function loadNews(showLoadingState = true) {
 
 async function fetchFromAvailableEndpoint() {
     let lastError = new Error('No se pudo obtener la API.');
-    const filters = getFilterSelection();
 
     for (const endpoint of endpointCandidates) {
         try {
-            const endpointWithFilters = appendDateFilters(endpoint, filters);
-            const response = await fetch(withCacheBuster(endpointWithFilters), {
+            const endpointWithAllNews = appendAllNewsLimit(endpoint);
+            const response = await fetch(withCacheBuster(endpointWithAllNews), {
                 cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
@@ -156,24 +169,21 @@ function setupFilters() {
     if (filterYear) {
         filterYear.addEventListener('change', function () {
             syncDateFilterControls();
-            loadNews();
+            applyFiltersAndRender();
         });
     }
 
     if (filterMonth) {
         filterMonth.addEventListener('change', function () {
             syncDateFilterControls();
-            loadNews();
+            applyFiltersAndRender();
         });
     }
 
     if (filterDay) {
         filterDay.addEventListener('change', function () {
-            if (isFutureFilterSelection(getFilterSelection())) {
-                syncDateFilterControls();
-            }
-
-            loadNews();
+            syncDateFilterControls();
+            applyFiltersAndRender();
         });
     }
 
@@ -181,15 +191,7 @@ function setupFilters() {
         filterToday.addEventListener('click', function () {
             applyTodayFilter();
             syncDateFilterControls();
-            loadNews();
-        });
-    }
-
-    if (filterClear) {
-        filterClear.addEventListener('click', function () {
-            clearFilters();
-            syncDateFilterControls();
-            loadNews();
+            applyFiltersAndRender();
         });
     }
 }
@@ -237,21 +239,19 @@ function applyTodayFilter() {
         return;
     }
 
-    if (filterYear) {
-        ensureOption(filterYear, String(today.year), String(today.year));
-        filterYear.value = String(today.year);
+    if (hasNewsForDate(today)) {
+        setFilterSelection(today);
+        return;
     }
 
-    if (filterMonth) {
-        populateMonthOptions(String(today.month));
-        filterMonth.value = String(today.month);
+    const latestAvailableDate = getLatestAvailableDateParts();
+
+    if (latestAvailableDate) {
+        setFilterSelection(latestAvailableDate);
+        return;
     }
 
-    if (filterDay) {
-        populateDayOptions(String(today.day));
-        ensureOption(filterDay, String(today.day), String(today.day));
-        filterDay.value = String(today.day);
-    }
+    clearFilters();
 }
 
 function clearFilters() {
@@ -273,45 +273,15 @@ function populateYearOptions(selectedYear) {
         return;
     }
 
-    const years = Array.from(new Set(
-        allNews
-            .map(function (item) {
-                const parts = getDatePartsFromItem(item);
-                return parts ? parts.year : null;
-            })
-            .filter(function (year) {
-                return Number.isInteger(year);
-            })
-    )).sort(function (a, b) {
+    const years = getAvailableValues('year', {
+        year: null,
+        month: null,
+        day: null,
+    }).sort(function (a, b) {
         return b - a;
     });
 
-    const today = getTodayParts();
-
-    if (today) {
-        years.push(today.year);
-    }
-
-    const distinctYears = Array.from(new Set(years))
-        .filter(function (year) {
-            return !today || year <= today.year;
-        })
-        .sort(function (a, b) {
-            return b - a;
-        });
-
-    filterYear.innerHTML = '<option value="">Todos</option>';
-
-    distinctYears.forEach(function (year) {
-        const option = document.createElement('option');
-        option.value = String(year);
-        option.textContent = String(year);
-        filterYear.appendChild(option);
-    });
-
-    if (selectedYear && Array.from(filterYear.options).some(function (option) { return option.value === selectedYear; })) {
-        filterYear.value = selectedYear;
-    }
+    setSelectOptions(filterYear, years, selectedYear);
 }
 
 function populateMonthOptions(selectedMonth) {
@@ -319,34 +289,18 @@ function populateMonthOptions(selectedMonth) {
         return;
     }
 
-    const today = getTodayParts();
-    const year = parseInteger(filterYear ? filterYear.value : '');
-    const maxMonth = today && year !== null && year === today.year ? today.month : 12;
-
-    Array.from(filterMonth.options).forEach(function (option) {
-        if (option.value === '') {
-            option.disabled = false;
-            return;
-        }
-
-        const monthValue = parseInteger(option.value);
-        option.disabled = monthValue !== null && monthValue > maxMonth;
+    const selectedYear = parseInteger(filterYear ? filterYear.value : '');
+    const months = getAvailableValues('month', {
+        year: selectedYear,
+        month: null,
+        day: null,
+    }).sort(function (a, b) {
+        return b - a;
     });
 
-    if (selectedMonth && Array.from(filterMonth.options).some(function (option) {
-        return option.value === selectedMonth && !option.disabled;
-    })) {
-        filterMonth.value = selectedMonth;
-        return;
-    }
-
-    const currentValueOption = Array.from(filterMonth.options).find(function (option) {
-        return option.value === filterMonth.value;
+    setSelectOptions(filterMonth, months, selectedMonth, function (month) {
+        return MONTH_LABELS[month] || String(month);
     });
-
-    if (currentValueOption && currentValueOption.disabled) {
-        filterMonth.value = '';
-    }
 }
 
 function populateDayOptions(selectedDay) {
@@ -354,22 +308,17 @@ function populateDayOptions(selectedDay) {
         return;
     }
 
-    const year = parseInteger(filterYear ? filterYear.value : '');
-    const month = parseInteger(filterMonth ? filterMonth.value : '');
-    const maxDay = getMaxSelectableDay(year, month);
+    const selectedYear = parseInteger(filterYear ? filterYear.value : '');
+    const selectedMonth = parseInteger(filterMonth ? filterMonth.value : '');
+    const days = getAvailableValues('day', {
+        year: selectedYear,
+        month: selectedMonth,
+        day: null,
+    }).sort(function (a, b) {
+        return b - a;
+    });
 
-    filterDay.innerHTML = '<option value="">Todos</option>';
-
-    for (let day = 1; day <= maxDay; day += 1) {
-        const option = document.createElement('option');
-        option.value = String(day);
-        option.textContent = String(day);
-        filterDay.appendChild(option);
-    }
-
-    if (selectedDay && Array.from(filterDay.options).some(function (option) { return option.value === selectedDay; })) {
-        filterDay.value = selectedDay;
-    }
+    setSelectOptions(filterDay, days, selectedDay);
 }
 
 function ensureOption(selectElement, value, label) {
@@ -389,6 +338,175 @@ function ensureOption(selectElement, value, label) {
     option.value = value;
     option.textContent = label;
     selectElement.appendChild(option);
+}
+
+function setSelectOptions(selectElement, values, selectedValue, labelResolver) {
+    if (!selectElement) {
+        return;
+    }
+
+    selectElement.innerHTML = '';
+
+    if (values.length === 0) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Sin fechas';
+        selectElement.appendChild(option);
+        selectElement.value = '';
+        selectElement.disabled = true;
+        return;
+    }
+
+    selectElement.disabled = false;
+
+    values.forEach(function (value) {
+        const option = document.createElement('option');
+        option.value = String(value);
+        option.textContent = typeof labelResolver === 'function' ? labelResolver(value) : String(value);
+        selectElement.appendChild(option);
+    });
+
+    const selectedNumber = parseInteger(selectedValue);
+    const nextValue = selectedNumber !== null && values.includes(selectedNumber)
+        ? selectedNumber
+        : values[0];
+
+    selectElement.value = String(nextValue);
+}
+
+
+function applyDefaultFilterIfNeeded() {
+    if (allNews.length === 0) {
+        hasInitializedDefaultFilter = false;
+        clearFilters();
+        return;
+    }
+
+    if (hasInitializedDefaultFilter && hasAnyFilterSelection()) {
+        return;
+    }
+
+    hasInitializedDefaultFilter = true;
+
+    const today = getTodayParts();
+
+    if (today && hasNewsForDate(today)) {
+        setFilterSelection(today);
+        return;
+    }
+
+    const latestAvailableDate = getLatestAvailableDateParts();
+
+    if (latestAvailableDate) {
+        setFilterSelection(latestAvailableDate);
+        return;
+    }
+
+    clearFilters();
+}
+
+function hasAnyFilterSelection() {
+    return Boolean(
+        (filterYear && filterYear.value !== '')
+        || (filterMonth && filterMonth.value !== '')
+        || (filterDay && filterDay.value !== '')
+    );
+}
+
+function setFilterSelection(parts) {
+    if (!parts) {
+        return;
+    }
+
+    if (filterYear) {
+        filterYear.value = String(parts.year);
+    }
+
+    syncDateFilterControls();
+
+    if (filterMonth) {
+        filterMonth.value = String(parts.month);
+    }
+
+    syncDateFilterControls();
+
+    if (filterDay) {
+        filterDay.value = String(parts.day);
+    }
+
+    syncDateFilterControls();
+}
+
+function hasNewsForDate(parts) {
+    if (!parts) {
+        return false;
+    }
+
+    return allNews.some(function (item) {
+        const dateParts = getDatePartsFromItem(item);
+
+        if (!dateParts) {
+            return false;
+        }
+
+        return dateParts.year === parts.year
+            && dateParts.month === parts.month
+            && dateParts.day === parts.day;
+    });
+}
+
+function getLatestAvailableDateParts() {
+    let latestDate = null;
+    let latestDateKey = 0;
+
+    allNews.forEach(function (item) {
+        const parts = getDatePartsFromItem(item);
+
+        if (!parts) {
+            return;
+        }
+
+        const dateKey = (parts.year * 10000) + (parts.month * 100) + parts.day;
+
+        if (dateKey > latestDateKey) {
+            latestDateKey = dateKey;
+            latestDate = parts;
+        }
+    });
+
+    return latestDate;
+}
+
+function getAvailableValues(dimension, criteria) {
+    const values = new Set();
+
+    allNews.forEach(function (item) {
+        const parts = getDatePartsFromItem(item);
+
+        if (!parts) {
+            return;
+        }
+
+        if (criteria.year !== null && parts.year !== criteria.year) {
+            return;
+        }
+
+        if (criteria.month !== null && parts.month !== criteria.month) {
+            return;
+        }
+
+        if (criteria.day !== null && parts.day !== criteria.day) {
+            return;
+        }
+
+        const value = parts[dimension];
+
+        if (Number.isInteger(value)) {
+            values.add(value);
+        }
+    });
+
+    return Array.from(values);
 }
 
 function applyFiltersAndRender() {
@@ -524,17 +642,14 @@ function clampFutureSelection() {
 }
 
 function syncDateFilterControls() {
+    const selectedYear = filterYear ? filterYear.value : '';
+    populateYearOptions(selectedYear);
+
     const selectedMonth = filterMonth ? filterMonth.value : '';
-    const selectedDay = filterDay ? filterDay.value : '';
-
     populateMonthOptions(selectedMonth);
-    populateDayOptions(selectedDay);
 
-    if (isFutureFilterSelection(getFilterSelection())) {
-        clampFutureSelection();
-        populateMonthOptions(filterMonth ? filterMonth.value : '');
-        populateDayOptions(filterDay ? filterDay.value : '');
-    }
+    const selectedDay = filterDay ? filterDay.value : '';
+    populateDayOptions(selectedDay);
 }
 function parseInteger(value) {
     const parsed = Number.parseInt(String(value || '').trim(), 10);
@@ -688,30 +803,10 @@ function updateLastUpdated(dateString) {
     lastUpdated.textContent = `Actualizado: ${utils.formatDate(dateString, true)}`;
 }
 
-function appendDateFilters(endpoint, filters) {
-    const params = new URLSearchParams();
-
-    if (filters.year !== null) {
-        params.set('year', String(filters.year));
-    }
-
-    if (filters.month !== null) {
-        params.set('month', String(filters.month));
-    }
-
-    if (filters.day !== null) {
-        params.set('day', String(filters.day));
-    }
-
-    const queryString = params.toString();
-
-    if (queryString === '') {
-        return endpoint;
-    }
-
+function appendAllNewsLimit(endpoint) {
     const separator = endpoint.indexOf('?') === -1 ? '?' : '&';
 
-    return endpoint + separator + queryString;
+    return endpoint + separator + 'limit=0';
 }
 
 function withCacheBuster(endpoint) {

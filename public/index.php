@@ -37,7 +37,7 @@ $apiEndpoint = '/api/news.php';
         <main class="content">
             <section class="content-head">
                 <div>
-                    <p class="section-kicker">Últimas publicaciones</p>
+                    <p class="section-kicker">&Uacute;ltimas publicaciones</p>
                 </div>
                 <p id="last-updated" class="last-updated" aria-live="polite"></p>
             </section>
@@ -52,42 +52,29 @@ $apiEndpoint = '/api/news.php';
             <section id="filters-panel" class="filters-card filters-panel filters-panel--collapsed" aria-label="Filtros de noticias" aria-hidden="true">
                 <div class="filters-grid">
                     <label class="filter-field" for="filter-year">
-                        <span class="filter-field__label">Año</span>
+                        <span class="filter-field__label">A&ntilde;o</span>
                         <select id="filter-year" class="filter-field__control">
-                            <option value="">Todos</option>
+                            <option value="">Sin fechas</option>
                         </select>
                     </label>
 
                     <label class="filter-field" for="filter-month">
                         <span class="filter-field__label">Mes</span>
                         <select id="filter-month" class="filter-field__control">
-                            <option value="">Todos</option>
-                            <option value="1">Enero</option>
-                            <option value="2">Febrero</option>
-                            <option value="3">Marzo</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Mayo</option>
-                            <option value="6">Junio</option>
-                            <option value="7">Julio</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Septiembre</option>
-                            <option value="10">Octubre</option>
-                            <option value="11">Noviembre</option>
-                            <option value="12">Diciembre</option>
+                            <option value="">Sin fechas</option>
                         </select>
                     </label>
 
                     <label class="filter-field" for="filter-day">
                         <span class="filter-field__label">Dia</span>
                         <select id="filter-day" class="filter-field__control">
-                            <option value="">Todos</option>
+                            <option value="">Sin fechas</option>
                         </select>
                     </label>
                 </div>
 
                 <div class="filters-actions">
                     <button id="filter-today" class="filter-action" type="button">Hoy</button>
-                    <button id="filter-clear" class="filter-action filter-action--ghost" type="button">Limpiar</button>
                 </div>
             </section>
 
@@ -102,7 +89,7 @@ $apiEndpoint = '/api/news.php';
             </div>
 
             <div id="empty-state" class="status-card is-hidden">
-                <strong>Por ahora no hay noticias disponibles.</strong>
+                <strong>Todav&iacute;a no hay noticias disponibles.</strong>
                 <p id="empty-state-message">Cuando el sistema vuelva a actualizarse, las publicaciones apareceran aqui.</p>
             </div>
 
@@ -114,12 +101,12 @@ $apiEndpoint = '/api/news.php';
                 <div class="site-footer__brand">
                     <p class="site-footer__label">Recopilador Informativo</p>
                     <h2 class="site-footer__title"><?php echo htmlspecialchars($config->appName(), ENT_QUOTES, 'UTF-8'); ?></h2>
-                    <p class="site-footer__copy">Cobertura automática de noticias ABI con visualización optimizada para consulta diaria.</p>
+                    <p class="site-footer__copy">Cobertura autom&aacute;tica de noticias ABI con visualizaci&oacute;n optimizada para consulta diaria.</p>
                 </div>
 
                 <div class="site-footer__meta" aria-label="Informacion del portal">
                     <p><span>Fuente ::</span> ABI RSS oficial</p>
-                    <p><span>Frecuencia ::</span> Actualización cada 5 minutos</p>
+                    <p><span>Frecuencia ::</span> Actualizaci&oacute;n cada 5 minutos</p>
                     <p><span>Desarrollo ::</span> <?php echo htmlspecialchars($config->footerAuthor(), ENT_QUOTES, 'UTF-8'); ?> | <?php echo date('Y'); ?></p>
                 </div>
             </div>
