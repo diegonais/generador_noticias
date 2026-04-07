@@ -426,16 +426,16 @@ function ensureCalendarView() {
 }
 
 function getInitialCalendarViewParts() {
-    const latestDate = getLatestAvailableDateParts();
-
-    if (latestDate) {
-        return latestDate;
-    }
-
     const today = getTodayParts();
 
     if (today) {
         return today;
+    }
+
+    const latestDate = getLatestAvailableDateParts();
+
+    if (latestDate) {
+        return latestDate;
     }
 
     const fallback = new Date();
@@ -652,12 +652,6 @@ function rebuildAvailableNewsDates() {
 }
 
 function applyDefaultFilterIfNeeded() {
-    if (allNews.length === 0) {
-        hasInitializedDefaultFilter = false;
-        clearFilters();
-        return;
-    }
-
     if (hasInitializedDefaultFilter && hasAnyFilterSelection()) {
         return;
     }
@@ -666,7 +660,7 @@ function applyDefaultFilterIfNeeded() {
 
     const today = getTodayParts();
 
-    if (today && hasNewsForDate(today)) {
+    if (today) {
         setFilterSelection(today);
         return;
     }
