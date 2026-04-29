@@ -961,12 +961,21 @@ body.theme-dark .calendar-filter__day--has-news::after {
     border-top: 1px solid var(--surface-border);
 }
 
+.detail-body {
+    width: 100%;
+    max-width: 100%;
+}
+
 .detail-text {
     margin: 0;
     color: var(--text);
     font-size: 1.04rem;
     line-height: 1.9;
     white-space: pre-wrap;
+}
+
+.detail-text + .detail-text {
+    margin-top: 1.05rem;
 }
 
 .detail-actions {

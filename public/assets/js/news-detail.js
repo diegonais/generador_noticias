@@ -78,7 +78,12 @@ function renderDetail(item) {
         ? `<img class="detail-hero__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager">`
         : '';
 
-    const fullText = utils.normalizeArticleText(item.summary || 'Sin contenido disponible.');
+    const paragraphs = utils.buildReadableParagraphs(item.summary || 'Sin contenido disponible.');
+    const bodyMarkup = (paragraphs.length > 0 ? paragraphs : ['Sin contenido disponible.'])
+        .map(function (paragraph) {
+            return `<p class="detail-text">${utils.escapeHtml(paragraph)}</p>`;
+        })
+        .join('');
 
     detailArticle.innerHTML = `
         <div class="detail-hero">
@@ -93,7 +98,7 @@ function renderDetail(item) {
             </div>
         </div>
         <div class="detail-content">
-            <p class="detail-text">${utils.escapeHtml(fullText)}</p>
+            <div class="detail-body">${bodyMarkup}</div>
             <div class="detail-actions">
                 <a class="detail-action" href="/">Volver al portal</a>
                 <a class="detail-action detail-action--primary" href="${utils.escapeAttribute(item.link || '#')}" target="_blank" rel="noopener noreferrer">Ver fuente original en ABI</a>

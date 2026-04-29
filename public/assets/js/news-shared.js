@@ -7,6 +7,71 @@ window.NewsPortalUtils = (function () {
             .trim();
     }
 
+    function buildReadableParagraphs(text) {
+        const normalized = normalizeArticleText(text)
+            .replace(/\r\n?/g, '\n')
+            .trim();
+
+        if (!normalized) {
+            return [];
+        }
+
+        const paragraphBlocks = normalized
+            .split(/\n{2,}/)
+            .map(function (block) {
+                return block.replace(/\s+/g, ' ').trim();
+            })
+            .filter(Boolean);
+
+        const sourceBlocks = paragraphBlocks.length > 0
+            ? paragraphBlocks
+            : [normalized.replace(/\s+/g, ' ').trim()];
+
+        const paragraphs = [];
+
+        sourceBlocks.forEach(function (block) {
+            if (block.length <= 280) {
+                paragraphs.push(block);
+                return;
+            }
+
+            const sentences = block.match(/[^.!?]+(?:[.!?]+|$)/g) || [block];
+            let currentParagraph = '';
+            let sentenceCounter = 0;
+
+            sentences.forEach(function (sentence) {
+                const cleanSentence = sentence.replace(/\s+/g, ' ').trim();
+
+                if (!cleanSentence) {
+                    return;
+                }
+
+                const candidate = currentParagraph
+                    ? `${currentParagraph} ${cleanSentence}`
+                    : cleanSentence;
+                const longEnough = candidate.length >= 260;
+                const tooLong = candidate.length >= 420;
+                const enoughSentences = sentenceCounter >= 2;
+
+                if (currentParagraph && (tooLong || (longEnough && enoughSentences))) {
+                    paragraphs.push(currentParagraph.trim());
+                    currentParagraph = cleanSentence;
+                    sentenceCounter = 1;
+                    return;
+                }
+
+                currentParagraph = candidate;
+                sentenceCounter += 1;
+            });
+
+            if (currentParagraph.trim()) {
+                paragraphs.push(currentParagraph.trim());
+            }
+        });
+
+        return paragraphs.filter(Boolean);
+    }
+
     function formatDate(dateString, withTime) {
         if (!dateString) {
             return 'Fecha no disponible';
@@ -64,6 +129,7 @@ window.NewsPortalUtils = (function () {
 
     return {
         normalizeArticleText,
+        buildReadableParagraphs,
         formatDate,
         setupBackToTop,
         escapeHtml,
