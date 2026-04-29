@@ -5,6 +5,7 @@ const detailArticle = document.querySelector('#news-detail');
 const backToTopButton = document.querySelector('#back-to-top');
 const utils = window.NewsPortalUtils;
 const THEME_STORAGE_KEY = 'portal_theme';
+let imageViewerKeyHandler = null;
 
 const detailEndpointCandidates = Array.from(new Set([
     detailShell ? detailShell.dataset.apiEndpoint : null,
@@ -74,8 +75,29 @@ async function fetchDetailPayload() {
 }
 
 function renderDetail(item) {
-    const imageMarkup = item.image
-        ? `<img class="detail-hero__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager">`
+    const hasImage = Boolean(item.image);
+    const imageMarkup = hasImage
+        ? `
+            <div class="detail-hero__media">
+                <img class="detail-hero__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager">
+                <button class="detail-image-zoom-btn" type="button" data-image-zoom-trigger aria-label="Ver imagen completa">
+                    <svg class="detail-image-zoom-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <circle cx="11" cy="11" r="6.5"></circle>
+                        <line x1="16" y1="16" x2="21" y2="21"></line>
+                    </svg>
+                </button>
+            </div>
+        `
+        : '';
+    const imageViewerMarkup = hasImage
+        ? `
+            <div class="detail-image-viewer is-hidden" data-image-viewer aria-hidden="true">
+                <div class="detail-image-viewer__dialog" role="dialog" aria-modal="true" aria-label="Imagen completa de la noticia">
+                    <button class="detail-image-viewer__close" type="button" data-image-viewer-close aria-label="Cerrar visor de imagen">&times;</button>
+                    <img class="detail-image-viewer__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager">
+                </div>
+            </div>
+        `
         : '';
 
     const paragraphs = utils.buildReadableParagraphs(item.summary || 'Sin contenido disponible.');
@@ -104,9 +126,57 @@ function renderDetail(item) {
                 <a class="detail-action detail-action--primary" href="${utils.escapeAttribute(item.link || '#')}" target="_blank" rel="noopener noreferrer">Ver fuente original en ABI</a>
             </div>
         </div>
+        ${imageViewerMarkup}
     `;
 
     document.title = `${item.title || 'Noticia'} | Portal Noticias ABI`;
+    setupImageViewer();
+}
+
+function setupImageViewer() {
+    if (imageViewerKeyHandler) {
+        document.removeEventListener('keydown', imageViewerKeyHandler);
+        imageViewerKeyHandler = null;
+    }
+
+    document.body.classList.remove('viewer-open');
+
+    const trigger = detailArticle.querySelector('[data-image-zoom-trigger]');
+    const viewer = detailArticle.querySelector('[data-image-viewer]');
+    const closeButton = detailArticle.querySelector('[data-image-viewer-close]');
+
+    if (!trigger || !viewer || !closeButton) {
+        return;
+    }
+
+    const closeViewer = function () {
+        viewer.classList.add('is-hidden');
+        viewer.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('viewer-open');
+    };
+
+    const openViewer = function () {
+        viewer.classList.remove('is-hidden');
+        viewer.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('viewer-open');
+        closeButton.focus();
+    };
+
+    trigger.addEventListener('click', openViewer);
+    closeButton.addEventListener('click', closeViewer);
+    viewer.addEventListener('click', function (event) {
+        if (event.target === viewer) {
+            closeViewer();
+        }
+    });
+
+    imageViewerKeyHandler = function (event) {
+        if (event.key === 'Escape' && !viewer.classList.contains('is-hidden')) {
+            closeViewer();
+        }
+    };
+
+    document.addEventListener('keydown', imageViewerKeyHandler);
 }
 
 function setDetailState(state) {

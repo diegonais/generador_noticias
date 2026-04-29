@@ -81,6 +81,10 @@ body {
         linear-gradient(180deg, var(--bg) 0%, var(--bg-alt) 100%);
 }
 
+body.viewer-open {
+    overflow: hidden;
+}
+
 img {
     display: block;
     max-width: 100%;
@@ -936,6 +940,49 @@ body.theme-dark .calendar-filter__day--has-news::after {
     object-fit: cover;
 }
 
+.detail-hero__media {
+    position: relative;
+}
+
+.detail-image-zoom-btn {
+    position: absolute;
+    top: 0.9rem;
+    right: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 1.1rem;
+    cursor: pointer;
+    background: rgba(10, 24, 41, 0.6);
+    backdrop-filter: blur(2px);
+    transition: transform 140ms ease, background-color 140ms ease;
+}
+
+.detail-image-zoom-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(10, 24, 41, 0.8);
+}
+
+.detail-image-zoom-btn:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
+}
+
+.detail-image-zoom-icon {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .detail-hero__body,
 .detail-content {
     padding: clamp(1.25rem, 3vw, 2rem);
@@ -976,6 +1023,59 @@ body.theme-dark .calendar-filter__day--has-news::after {
 
 .detail-text + .detail-text {
     margin-top: 1.05rem;
+}
+
+.detail-image-viewer {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: clamp(0.75rem, 2vw, 1.75rem);
+    background: rgba(4, 10, 20, 0.78);
+}
+
+.detail-image-viewer__dialog {
+    position: relative;
+    width: fit-content;
+    max-width: min(96vw, 1600px);
+    max-height: 92vh;
+    padding: 0.85rem;
+    border: 1px solid var(--surface-border-strong);
+    border-radius: 18px;
+    background: var(--surface-strong);
+    box-shadow: 0 22px 55px rgba(0, 0, 0, 0.45);
+}
+
+.detail-image-viewer__image {
+    width: auto;
+    max-width: calc(96vw - 2rem);
+    max-height: calc(92vh - 2rem);
+    border-radius: 12px;
+    object-fit: contain;
+}
+
+.detail-image-viewer__close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 1px solid var(--surface-border-strong);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.detail-image-viewer__close:focus-visible {
+    outline: 3px solid var(--focus-ring);
+    outline-offset: 2px;
 }
 
 .detail-actions {
