@@ -76,6 +76,31 @@ Tambien se conserva el wrapper anterior:
 php scripts/update_news.php
 ```
 
+## Ingesta automatica en Render
+
+Para que la ingesta no dependa de que el proyecto este corriendo en tu maquina, crea un servicio separado de tipo **Cron Job** en Render apuntando a este mismo repositorio.
+
+Configuracion recomendada:
+
+- Runtime: Docker
+- Schedule: `*/10 * * * *`
+- Command / Docker Command: `php bin/update-news.php`
+- Environment variables: las mismas que usa el Web Service, especialmente `SUPABASE_ENABLED=true`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_TABLE`, `ABI_RSS_URL`, `MAX_NEWS_ITEMS` y `TIMEZONE`.
+
+El Web Service puede seguir mostrando el portal, pero la responsabilidad de insertar noticias nuevas queda en el Cron Job de Render. Esto es mas confiable que depender del cron interno del contenedor web, porque los Web Services gratuitos de Render pueden apagarse cuando no reciben trafico.
+
+## Ingesta automatica con GitHub Actions
+
+El proyecto tambien incluye un workflow en `.github/workflows/update-news.yml` para ejecutar la ingesta cada 10 minutos sin depender de tu maquina local ni del estado del Web Service de Render.
+
+Configura estos secrets en GitHub, dentro de **Settings > Secrets and variables > Actions**:
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_TABLE` opcional; si no existe, se usa `news`
+
+El workflow tambien se puede ejecutar manualmente desde la pestana **Actions** con **Run workflow**.
+
 ## Monitoreo de logs
 
 Cada sincronizacion escribe en `storage/logs/update.log` el estado del RSS de ABI, la lectura/guardado en Supabase y el respaldo JSON local.

@@ -1,6 +1,10 @@
 #!/bin/sh
 set -eu
 
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
+
 cd /var/www/html
 
 APP_TZ="${TZ:-America/La_Paz}"
@@ -27,7 +31,7 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON_TZ=$APP_TZ
 TZ=$APP_TZ
 
-*/5 * * * * cd /var/www/html && /usr/local/bin/php bin/update-news.php >> storage/logs/update.log 2>&1
+*/10 * * * * cd /var/www/html && /usr/local/bin/php bin/update-news.php >> storage/logs/update.log 2>&1
 EOF
 crontab /tmp/portal-noticias-abi.cron
 rm -f /tmp/portal-noticias-abi.cron
@@ -36,4 +40,5 @@ php /var/www/html/bin/update-news.php || true
 
 cron
 
-exec php -S 0.0.0.0:3003 -t /var/www/html/public /var/www/html/router.php
+APP_PORT="${PORT:-3003}"
+exec php -S "0.0.0.0:$APP_PORT" -t /var/www/html/public /var/www/html/router.php

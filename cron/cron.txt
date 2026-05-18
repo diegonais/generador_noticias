@@ -1,2 +1,2 @@
-*/5 * * * * /usr/bin/php /ruta-completa/portal-noticias-abi/bin/update-news.php
+*/10 * * * * /usr/bin/php /ruta-completa/portal-noticias-abi/bin/update-news.php
 

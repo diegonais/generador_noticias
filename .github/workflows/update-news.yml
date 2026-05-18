@@ -1,0 +1,50 @@
+name: Update news
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: update-news
+  cancel-in-progress: false
+
+jobs:
+  update-news:
+    name: Fetch ABI news
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      APP_NAME: Portal Noticias ABI
+      APP_PUBLIC_URL: ${{ vars.APP_PUBLIC_URL }}
+      TIMEZONE: America/La_Paz
+      ABI_RSS_URL: https://abi.bo/feed/
+      MAX_NEWS_ITEMS: "60"
+      FOOTER_AUTHOR: Diego
+      SUPABASE_ENABLED: "true"
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_TABLE: ${{ secrets.SUPABASE_TABLE || 'news' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: curl
+          coverage: none
+
+      - name: Validate Supabase secrets
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Configure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in GitHub repository secrets."
+            exit 1
+          fi
+
+      - name: Update news
+        run: php bin/update-news.php
