@@ -30,6 +30,7 @@
     --max-width: 1360px;
 }
 
+html.theme-dark body,
 body.theme-dark {
     --bg: #0b2847;
     --bg-alt: #123a5e;
@@ -84,6 +85,7 @@ body.viewer-open {
     overflow: hidden;
 }
 
+html.theme-dark body,
 body.theme-dark {
     background:
         radial-gradient(circle at 12% 0%, rgba(123, 214, 255, 0.18), transparent 30rem),
@@ -724,6 +726,7 @@ select {
     text-transform: uppercase;
 }
 
+html.theme-dark .news-card__image--placeholder,
 body.theme-dark .news-card__image--placeholder {
     color: rgba(238, 243, 246, 0.22);
 }

@@ -22,6 +22,38 @@ function assetUrl(string $path): string
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($config->appName(), ENT_QUOTES, 'UTF-8'); ?></title>
     <meta name="description" content="Portal editorial de seguimiento actualizado con noticias recientes de la Agencia Boliviana de Informacion.">
+    <script>
+        (function () {
+            var key = 'portal_theme';
+            var storedTheme = null;
+
+            try {
+                storedTheme = localStorage.getItem(key);
+            } catch (error) {
+                storedTheme = null;
+            }
+
+            var theme = storedTheme;
+
+            if (theme !== 'dark' && theme !== 'light') {
+                var prefersDark = false;
+
+                try {
+                    prefersDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                } catch (error) {
+                    prefersDark = false;
+                }
+
+                theme = prefersDark ? 'dark' : 'light';
+            }
+
+            if (theme === 'dark') {
+                document.documentElement.classList.add('theme-dark');
+            } else {
+                document.documentElement.classList.remove('theme-dark');
+            }
+        })();
+    </script>
     <link rel="stylesheet" href="<?php echo htmlspecialchars(assetUrl('assets/css/styles.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body>

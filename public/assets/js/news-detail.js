@@ -514,6 +514,7 @@ function readStoredTheme() {
 }
 
 function applyTheme(theme) {
+    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
     document.body.classList.toggle('theme-dark', theme === 'dark');
 }
 

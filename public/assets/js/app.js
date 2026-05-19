@@ -214,6 +214,7 @@ function readStoredTheme() {
 function applyTheme(theme) {
     const isDark = theme === 'dark';
 
+    document.documentElement.classList.toggle('theme-dark', isDark);
     document.body.classList.toggle('theme-dark', isDark);
 
     if (!themeToggle) {

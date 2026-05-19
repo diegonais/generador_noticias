@@ -389,6 +389,38 @@ function firstForwardedValue(?string $value): string
     <title><?php echo htmlspecialchars($metaTitle, ENT_QUOTES, 'UTF-8'); ?></title>
     <meta name="description" content="<?php echo htmlspecialchars($metaDescription, ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="canonical" href="<?php echo htmlspecialchars($canonicalUrl, ENT_QUOTES, 'UTF-8'); ?>">
+    <script>
+        (function () {
+            var key = 'portal_theme';
+            var storedTheme = null;
+
+            try {
+                storedTheme = localStorage.getItem(key);
+            } catch (error) {
+                storedTheme = null;
+            }
+
+            var theme = storedTheme;
+
+            if (theme !== 'dark' && theme !== 'light') {
+                var prefersDark = false;
+
+                try {
+                    prefersDark = Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                } catch (error) {
+                    prefersDark = false;
+                }
+
+                theme = prefersDark ? 'dark' : 'light';
+            }
+
+            if (theme === 'dark') {
+                document.documentElement.classList.add('theme-dark');
+            } else {
+                document.documentElement.classList.remove('theme-dark');
+            }
+        })();
+    </script>
 
     <meta property="og:site_name" content="<?php echo htmlspecialchars($config->appName(), ENT_QUOTES, 'UTF-8'); ?>">
     <meta property="og:locale" content="es_BO">
