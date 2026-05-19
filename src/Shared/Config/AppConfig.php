@@ -18,6 +18,7 @@ final class AppConfig
         private readonly string $supabaseUrl,
         private readonly string $supabaseServiceRoleKey,
         private readonly string $supabaseTable,
+        private readonly string $ingestToken,
     ) {
     }
 
@@ -37,6 +38,7 @@ final class AppConfig
             supabaseUrl: rtrim(self::envValue('SUPABASE_URL', ''), '/'),
             supabaseServiceRoleKey: self::envValue('SUPABASE_SERVICE_ROLE_KEY', ''),
             supabaseTable: self::envValue('SUPABASE_TABLE', 'news'),
+            ingestToken: self::envValue('INGEST_TOKEN', ''),
         );
 
         date_default_timezone_set($config->timezone());
@@ -105,6 +107,11 @@ final class AppConfig
     public function supabaseTable(): string
     {
         return $this->supabaseTable;
+    }
+
+    public function ingestToken(): string
+    {
+        return $this->ingestToken;
     }
 
     public function newsJsonPath(): string

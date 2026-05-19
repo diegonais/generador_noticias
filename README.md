@@ -58,6 +58,7 @@ SUPABASE_ENABLED=false
 SUPABASE_URL="https://tu-proyecto.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="tu-service-role-key"
 SUPABASE_TABLE="news"
+INGEST_TOKEN="token-largo-para-cron"
 ```
 
 `APP_PUBLIC_URL` debe apuntar a la URL publica real del portal, preferiblemente con HTTPS. Es importante para que Facebook, WhatsApp, X y otros servicios puedan leer correctamente los metadatos Open Graph y la imagen de cada noticia al compartir enlaces.
@@ -89,9 +90,41 @@ Configuracion recomendada:
 
 El Web Service puede seguir mostrando el portal, pero la responsabilidad de insertar noticias nuevas queda en el Cron Job de Render. Esto es mas confiable que depender del cron interno del contenedor web, porque los Web Services gratuitos de Render pueden apagarse cuando no reciben trafico.
 
-## Ingesta automatica con GitHub Actions
+## Ingesta automatica con Supabase Cron
 
-El proyecto tambien incluye un workflow en `.github/workflows/update-news.yml` para ejecutar la ingesta cada 10 minutos sin depender de tu maquina local ni del estado del Web Service de Render.
+El proyecto expone un endpoint protegido para ejecutar la ingesta desde un programador externo:
+
+```text
+POST /api/update-news.php
+Authorization: Bearer <INGEST_TOKEN>
+```
+
+Configura `INGEST_TOKEN` en Render con un valor largo y secreto. El endpoint rechaza peticiones sin token, con token incorrecto o con un metodo distinto de `POST`.
+
+En Supabase, habilita `pg_cron` y `pg_net`, y programa una llamada cada 10 minutos:
+
+```sql
+select cron.schedule(
+  'ingest-news-every-10-minutes',
+  '3,13,23,33,43,53 * * * *',
+  $$
+  select net.http_post(
+    url := 'https://tu-app.onrender.com/api/update-news.php',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer TU_INGEST_TOKEN',
+      'Content-Type', 'application/json'
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+Reemplaza `https://tu-app.onrender.com` por la URL publica real de Render y `TU_INGEST_TOKEN` por el mismo valor configurado en Render. Para produccion, guarda ese token en Supabase Vault y referencialo desde el job en lugar de dejarlo escrito en SQL.
+
+## Ingesta manual con GitHub Actions
+
+El proyecto tambien incluye un workflow en `.github/workflows/update-news.yml` como respaldo manual para ejecutar la ingesta desde GitHub Actions.
 
 Configura estos secrets en GitHub, dentro de **Settings > Secrets and variables > Actions**:
 
