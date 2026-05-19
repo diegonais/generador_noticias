@@ -34,7 +34,7 @@ async function loadNewsDetail() {
         const payload = await fetchDetailPayload();
         const news = Array.isArray(payload && payload.data) ? payload.data : [];
         const item = news.find(function (entry) {
-            return String(entry.guid || '') === requestedId || String(entry.link || '') === requestedId;
+            return identifiersMatch(entry.guid, requestedId) || identifiersMatch(entry.link, requestedId);
         });
 
         if (!item) {
@@ -55,8 +55,8 @@ async function fetchDetailPayload() {
 
     for (const endpoint of detailEndpointCandidates) {
         try {
-            const endpointWithAllNews = appendAllNewsLimit(endpoint);
-            const response = await fetch(withCacheBuster(endpointWithAllNews), {
+            const endpointWithId = appendDetailIdentifier(endpoint, requestedId);
+            const response = await fetch(withCacheBuster(endpointWithId), {
                 cache: 'no-store',
                 headers: {
                     Accept: 'application/json',
@@ -76,10 +76,67 @@ async function fetchDetailPayload() {
     throw lastError;
 }
 
-function appendAllNewsLimit(endpoint) {
+function identifiersMatch(left, right) {
+    const leftValue = String(left || '').trim();
+    const rightValue = String(right || '').trim();
+
+    if (!leftValue || !rightValue) {
+        return false;
+    }
+
+    const leftCandidates = expandIdentifierCandidates(leftValue);
+    const rightCandidates = expandIdentifierCandidates(rightValue);
+
+    return leftCandidates.some(function (candidate) {
+        return rightCandidates.includes(candidate);
+    });
+}
+
+function expandIdentifierCandidates(value) {
+    const raw = String(value || '').trim();
+
+    if (!raw) {
+        return [];
+    }
+
+    const decoded = safeDecodeURIComponent(raw);
+    const doubleDecoded = safeDecodeURIComponent(decoded);
+
+    return Array.from(new Set([
+        normalizeIdentifier(raw),
+        normalizeIdentifier(decoded),
+        normalizeIdentifier(doubleDecoded),
+    ].filter(Boolean)));
+}
+
+function safeDecodeURIComponent(value) {
+    try {
+        return decodeURIComponent(value);
+    } catch (error) {
+        return value;
+    }
+}
+
+function normalizeIdentifier(value) {
+    const raw = String(value || '').trim();
+
+    if (!raw) {
+        return '';
+    }
+
+    try {
+        const parsed = new URL(raw);
+        const path = parsed.pathname !== '/' ? parsed.pathname.replace(/\/+$/, '') : '/';
+        return `${parsed.protocol}//${parsed.host.toLowerCase()}${path}${parsed.search}`;
+    } catch (error) {
+        return raw;
+    }
+}
+
+function appendDetailIdentifier(endpoint, identifier) {
     const separator = endpoint.indexOf('?') === -1 ? '?' : '&';
 
-    return endpoint + separator + 'limit=0';
+    return endpoint + separator + 'id=' + encodeURIComponent(String(identifier || '').trim());
 }
 
 function withCacheBuster(endpoint) {

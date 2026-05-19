@@ -155,6 +155,35 @@ final class SupabaseNewsRepository implements NewsRepositoryInterface
         return $updatedAt !== '' ? $updatedAt : null;
     }
 
+    public function findByIdentifier(string $identifier): ?NewsItem
+    {
+        $this->guardConfiguration();
+
+        $candidates = $this->expandIdentifierCandidates($identifier);
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        foreach ($candidates as $candidate) {
+            $item = $this->findFirstByField('guid', $candidate);
+
+            if ($item instanceof NewsItem) {
+                return $item;
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $item = $this->findFirstByField('link', $candidate);
+
+            if ($item instanceof NewsItem) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
     private function guardConfiguration(): void
     {
         if (!$this->config->isSupabaseConfigured()) {
@@ -192,6 +221,47 @@ final class SupabaseNewsRepository implements NewsRepositoryInterface
         }
 
         return implode(' ', $parts);
+    }
+
+    private function findFirstByField(string $field, string $value): ?NewsItem
+    {
+        $query = http_build_query([
+            'select' => 'guid,title,summary,link,source,published_at,image,created_at,updated_at',
+            $field => 'eq.' . $value,
+            'limit' => 1,
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        $response = $this->httpClient->request(
+            'GET',
+            $this->buildTableUrl() . '?' . $query,
+            $this->defaultHeaders(),
+            null,
+            false,
+        );
+
+        if (!$response->isSuccessful()) {
+            return null;
+        }
+
+        $decoded = $this->decodeJson($response->body());
+
+        if (!is_array($decoded) || !isset($decoded[0]) || !is_array($decoded[0])) {
+            return null;
+        }
+
+        return NewsItem::fromArray($decoded[0], $this->config->timezone());
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function expandIdentifierCandidates(string $value): array
+    {
+        $raw = trim($value);
+        $decoded = rawurldecode($raw);
+        $doubleDecoded = rawurldecode($decoded);
+
+        return array_values(array_unique(array_values(array_filter([$raw, $decoded, $doubleDecoded]))));
     }
 
     private function compactText(string $value): string

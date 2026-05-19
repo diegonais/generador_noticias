@@ -21,6 +21,8 @@ const themeToggle = document.querySelector('#theme-toggle');
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const utils = window.NewsPortalUtils;
 const timezone = shell && shell.dataset.timezone ? shell.dataset.timezone : 'America/La_Paz';
+const DEFAULT_NEWS_LIMIT = resolveNewsLimit();
+const NEWS_CACHE_STORAGE_KEY = 'portal_news_cache_v1';
 
 const endpointCandidates = Array.from(new Set([
     shell ? shell.dataset.apiEndpoint : null,
@@ -64,34 +66,41 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 async function loadNews(showLoadingState = true) {
+    let renderedFromCache = false;
+
     if (showLoadingState) {
-        setState('loading');
+        const cachedPayload = readCachedNewsPayload();
+
+        if (cachedPayload) {
+            applyNewsPayload(cachedPayload);
+            renderedFromCache = true;
+        } else {
+            setState('loading');
+        }
     }
 
     try {
-        const payload = await fetchFromAvailableEndpoint();
-        const news = Array.isArray(payload && payload.data) ? payload.data : Array.isArray(payload) ? payload : [];
-
-        allNews = news;
-        rebuildAvailableNewsDates();
-        updateLastUpdated(payload && payload.updated_at ? payload.updated_at : null);
-        applyDefaultFilterIfNeeded();
-        refreshFilterOptions();
-        applyFiltersAndRender();
+        const payload = await fetchFromAvailableEndpoint(false);
+        applyNewsPayload(payload);
+        cacheNewsPayload(payload);
     } catch (error) {
         console.error('Error loading news:', error);
-        setState('error');
+
+        if (!renderedFromCache) {
+            setState('error');
+        }
     }
 }
 
-async function fetchFromAvailableEndpoint() {
+async function fetchFromAvailableEndpoint(forceFresh = false) {
     let lastError = new Error('No se pudo obtener la API.');
 
     for (const endpoint of endpointCandidates) {
         try {
-            const endpointWithAllNews = appendAllNewsLimit(endpoint);
-            const response = await fetch(withCacheBuster(endpointWithAllNews), {
-                cache: 'no-store',
+            const endpointWithLimit = appendNewsLimit(endpoint, DEFAULT_NEWS_LIMIT);
+            const requestUrl = forceFresh ? withCacheBuster(endpointWithLimit) : endpointWithLimit;
+            const response = await fetch(requestUrl, {
+                cache: forceFresh ? 'no-store' : 'default',
                 headers: {
                     Accept: 'application/json',
                 },
@@ -108,6 +117,51 @@ async function fetchFromAvailableEndpoint() {
     }
 
     throw lastError;
+}
+
+function applyNewsPayload(payload) {
+    const news = Array.isArray(payload && payload.data) ? payload.data : Array.isArray(payload) ? payload : [];
+
+    allNews = news;
+    rebuildAvailableNewsDates();
+    updateLastUpdated(payload && payload.updated_at ? payload.updated_at : null);
+    applyDefaultFilterIfNeeded();
+    refreshFilterOptions();
+    applyFiltersAndRender();
+}
+
+function readCachedNewsPayload() {
+    try {
+        const raw = localStorage.getItem(NEWS_CACHE_STORAGE_KEY);
+
+        if (!raw) {
+            return null;
+        }
+
+        const parsed = JSON.parse(raw);
+
+        if (!parsed || !Array.isArray(parsed.data)) {
+            return null;
+        }
+
+        return parsed;
+    } catch (error) {
+        return null;
+    }
+}
+
+function cacheNewsPayload(payload) {
+    try {
+        const news = Array.isArray(payload && payload.data) ? payload.data : Array.isArray(payload) ? payload : [];
+        const safePayload = {
+            data: news,
+            updated_at: payload && payload.updated_at ? payload.updated_at : null,
+            cached_at: new Date().toISOString(),
+        };
+
+        localStorage.setItem(NEWS_CACHE_STORAGE_KEY, JSON.stringify(safePayload));
+    } catch (error) {
+    }
 }
 
 
@@ -1017,10 +1071,12 @@ function updateLastUpdated(dateString) {
     lastUpdated.textContent = `Actualizado ${utils.formatDate(dateString, true)}`;
 }
 
-function appendAllNewsLimit(endpoint) {
+function appendNewsLimit(endpoint, limit) {
     const separator = endpoint.indexOf('?') === -1 ? '?' : '&';
+    const numericLimit = Number(limit);
+    const resolvedLimit = Number.isFinite(numericLimit) && numericLimit > 0 ? Math.floor(numericLimit) : 60;
 
-    return endpoint + separator + 'limit=0';
+    return endpoint + separator + 'limit=' + resolvedLimit;
 }
 
 function withCacheBuster(endpoint) {
@@ -1031,11 +1087,30 @@ function withCacheBuster(endpoint) {
 
 function setupAutoRefresh() {
     window.setInterval(function () {
-        loadNews(false);
+        fetchAndRefreshNews();
     }, AUTO_REFRESH_INTERVAL_MS);
+}
+
+async function fetchAndRefreshNews() {
+    try {
+        const payload = await fetchFromAvailableEndpoint(true);
+        applyNewsPayload(payload);
+        cacheNewsPayload(payload);
+    } catch (error) {
+        console.error('Error refreshing news:', error);
+    }
 }
 
 function setupBackToTop() {
     utils.setupBackToTop(backToTopButton);
 }
 
+function resolveNewsLimit() {
+    const rawLimit = shell && shell.dataset ? Number(shell.dataset.maxNewsItems) : NaN;
+
+    if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
+        return 60;
+    }
+
+    return Math.floor(rawLimit);
+}

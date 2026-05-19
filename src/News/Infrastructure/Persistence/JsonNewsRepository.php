@@ -100,6 +100,30 @@ final class JsonNewsRepository implements NewsRepositoryInterface
             ->format(DATE_ATOM);
     }
 
+    public function findByIdentifier(string $identifier): ?NewsItem
+    {
+        $candidate = trim($identifier);
+
+        if ($candidate === '') {
+            return null;
+        }
+
+        foreach ($this->findLatest(PHP_INT_MAX) as $item) {
+            if (!$item instanceof NewsItem) {
+                continue;
+            }
+
+            if (
+                $this->identifiersMatch((string) $item->guid(), $candidate)
+                || $this->identifiersMatch((string) $item->link(), $candidate)
+            ) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
     private function ensureDirectories(): void
     {
         $directories = [
@@ -121,5 +145,64 @@ final class JsonNewsRepository implements NewsRepositoryInterface
         if (!is_file($this->config->logPath())) {
             file_put_contents($this->config->logPath(), '', LOCK_EX);
         }
+    }
+
+    private function identifiersMatch(string $left, string $right): bool
+    {
+        if (trim($left) === '' || trim($right) === '') {
+            return false;
+        }
+
+        $leftCandidates = $this->expandIdentifierCandidates($left);
+        $rightCandidates = $this->expandIdentifierCandidates($right);
+
+        foreach ($leftCandidates as $candidate) {
+            if (in_array($candidate, $rightCandidates, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function expandIdentifierCandidates(string $value): array
+    {
+        $raw = trim($value);
+        $decoded = rawurldecode($raw);
+        $doubleDecoded = rawurldecode($decoded);
+
+        $candidates = array_values(array_filter([
+            $this->normalizeIdentifier($raw),
+            $this->normalizeIdentifier($decoded),
+            $this->normalizeIdentifier($doubleDecoded),
+        ]));
+
+        return array_values(array_unique($candidates));
+    }
+
+    private function normalizeIdentifier(string $value): string
+    {
+        $trimmed = trim($value);
+
+        if ($trimmed === '') {
+            return '';
+        }
+
+        $parsed = parse_url($trimmed);
+
+        if (!is_array($parsed) || !isset($parsed['host'])) {
+            return $trimmed;
+        }
+
+        $scheme = isset($parsed['scheme']) ? strtolower((string) $parsed['scheme']) : 'https';
+        $host = strtolower((string) $parsed['host']);
+        $path = isset($parsed['path']) ? (string) $parsed['path'] : '';
+        $path = $path !== '/' ? rtrim($path, '/') : '/';
+        $query = isset($parsed['query']) ? (string) $parsed['query'] : '';
+
+        return $scheme . '://' . $host . $path . ($query !== '' ? '?' . $query : '');
     }
 }

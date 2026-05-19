@@ -26,17 +26,7 @@ function assetUrl(string $path): string
 
 if ($newsId !== '') {
     try {
-        $newsItem = resolveNewsItem($container->jsonNewsRepository()->findLatest(PHP_INT_MAX), $newsId);
-
-        if ($newsItem === null) {
-            $newsItem = resolveNewsItem($container->newsRepository()->findLatest(max(200, $config->maxNewsItems() * 3)), $newsId);
-        }
-
-        if ($newsItem === null) {
-            $payload = $container->listNewsUseCase()->execute(0);
-            $payloadData = (isset($payload['data']) && is_array($payload['data'])) ? $payload['data'] : [];
-            $newsItem = resolveNewsItemFromPayloadData($payloadData, $newsId, $config->timezone());
-        }
+        $newsItem = $container->jsonNewsRepository()->findByIdentifier($newsId);
     } catch (Throwable $error) {
         $newsItem = null;
     }

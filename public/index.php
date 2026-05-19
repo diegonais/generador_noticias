@@ -47,6 +47,7 @@ function assetUrl(string $path): string
         class="site-shell"
         data-api-endpoint="<?php echo htmlspecialchars($apiEndpoint, ENT_QUOTES, 'UTF-8'); ?>"
         data-timezone="<?php echo htmlspecialchars($config->timezone(), ENT_QUOTES, 'UTF-8'); ?>"
+        data-max-news-items="<?php echo (int) $config->maxNewsItems(); ?>"
     >
 
         <main class="content">

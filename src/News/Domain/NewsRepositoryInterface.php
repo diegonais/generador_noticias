@@ -17,4 +17,6 @@ interface NewsRepositoryInterface
     public function saveAll(array $items): void;
 
     public function latestUpdatedAt(): ?string;
+
+    public function findByIdentifier(string $identifier): ?NewsItem;
 }

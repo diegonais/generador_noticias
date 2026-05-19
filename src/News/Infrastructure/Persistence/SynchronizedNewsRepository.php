@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PortalNoticias\News\Infrastructure\Persistence;
 
+use PortalNoticias\News\Domain\NewsItem;
 use PortalNoticias\News\Domain\NewsRepositoryInterface;
 use PortalNoticias\News\Domain\UpdateLoggerInterface;
 use RuntimeException;
@@ -99,5 +100,25 @@ final class SynchronizedNewsRepository implements NewsRepositoryInterface
         }
 
         return $this->fallbackRepository->latestUpdatedAt();
+    }
+
+    public function findByIdentifier(string $identifier): ?NewsItem
+    {
+        try {
+            $this->logger?->logMessage('INFO', 'Buscando noticia por identificador en Supabase.');
+            $primaryItem = $this->primaryRepository->findByIdentifier($identifier);
+
+            if ($primaryItem instanceof NewsItem) {
+                return $primaryItem;
+            }
+
+            $this->logger?->logMessage('WARN', 'Supabase no encontro noticia por identificador; se usara respaldo local.');
+        } catch (Throwable $exception) {
+            $this->logger?->logMessage('ERROR', 'Fallo la busqueda por identificador en Supabase; se usara respaldo local.', [
+                'error' => $exception->getMessage(),
+            ]);
+        }
+
+        return $this->fallbackRepository->findByIdentifier($identifier);
     }
 }
