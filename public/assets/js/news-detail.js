@@ -148,11 +148,14 @@ function withCacheBuster(endpoint) {
 function renderDetail(item) {
     currentDetailItem = item;
     const hasImage = Boolean(item.image);
+    const imageCandidates = utils.buildImageSourceCandidates(item.image);
+    const imageSrc = imageCandidates.length > 0 ? imageCandidates[0] : '';
+    const proxyCandidates = imageCandidates.join('|');
     const shareLinks = buildShareLinks(item);
     const imageMarkup = hasImage
         ? `
             <div class="detail-hero__media">
-                <img class="detail-hero__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager">
+                <img class="detail-hero__image" src="${utils.escapeAttribute(imageSrc)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager" data-proxy-candidates="${utils.escapeAttribute(proxyCandidates)}" data-proxy-index="0" onerror="window.NewsPortalUtils.handleImageLoadError(this)">
                 <button class="detail-image-zoom-btn" type="button" data-image-zoom-trigger aria-label="Ver imagen completa">
                     <svg class="detail-image-zoom-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <circle cx="11" cy="11" r="6.5"></circle>
@@ -167,7 +170,7 @@ function renderDetail(item) {
             <div class="detail-image-viewer is-hidden" data-image-viewer aria-hidden="true">
                 <div class="detail-image-viewer__dialog" role="dialog" aria-modal="true" aria-label="Imagen completa de la noticia">
                     <button class="detail-image-viewer__close" type="button" data-image-viewer-close aria-label="Cerrar visor de imagen">&times;</button>
-                    <img class="detail-image-viewer__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager">
+                    <img class="detail-image-viewer__image" src="${utils.escapeAttribute(imageSrc)}" alt="${utils.escapeAttribute(item.title || 'Noticia ABI')}" loading="eager" data-proxy-candidates="${utils.escapeAttribute(proxyCandidates)}" data-proxy-index="0" onerror="window.NewsPortalUtils.handleImageLoadError(this)">
                 </div>
             </div>
         `

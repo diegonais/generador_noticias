@@ -19,9 +19,11 @@ const filtersPanel = document.querySelector('#filters-panel');
 const themeToggle = document.querySelector('#theme-toggle');
 
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const API_MAX_NEWS_LIMIT = 10000;
+const FAST_NEWS_LIMIT = resolveFastNewsLimit();
+const FULL_NEWS_LIMIT = API_MAX_NEWS_LIMIT;
 const utils = window.NewsPortalUtils;
 const timezone = shell && shell.dataset.timezone ? shell.dataset.timezone : 'America/La_Paz';
-const DEFAULT_NEWS_LIMIT = resolveNewsLimit();
 const NEWS_CACHE_STORAGE_KEY = 'portal_news_cache_v1';
 
 const endpointCandidates = Array.from(new Set([
@@ -36,6 +38,8 @@ let hasInitializedDefaultFilter = false;
 let selectedFilterDate = null;
 let calendarView = null;
 let availableNewsDates = new Set();
+let hasHydratedFullHistory = false;
+let fullHistoryRequest = null;
 
 const DEFAULT_EMPTY_MESSAGE = 'Las nuevas actualizaciones aparecer\u00e1n en este espacio.';
 const THEME_STORAGE_KEY = 'portal_theme';
@@ -80,9 +84,10 @@ async function loadNews(showLoadingState = true) {
     }
 
     try {
-        const payload = await fetchFromAvailableEndpoint(false);
+        const payload = await fetchFromAvailableEndpoint(FAST_NEWS_LIMIT, false);
         applyNewsPayload(payload);
         cacheNewsPayload(payload);
+        ensureFullHistoryLoaded(false);
     } catch (error) {
         console.error('Error loading news:', error);
 
@@ -92,12 +97,12 @@ async function loadNews(showLoadingState = true) {
     }
 }
 
-async function fetchFromAvailableEndpoint(forceFresh = false) {
+async function fetchFromAvailableEndpoint(limit, forceFresh = false) {
     let lastError = new Error('No se pudo obtener la API.');
 
     for (const endpoint of endpointCandidates) {
         try {
-            const endpointWithLimit = appendNewsLimit(endpoint, DEFAULT_NEWS_LIMIT);
+            const endpointWithLimit = appendNewsLimit(endpoint, limit);
             const requestUrl = forceFresh ? withCacheBuster(endpointWithLimit) : endpointWithLimit;
             const response = await fetch(requestUrl, {
                 cache: forceFresh ? 'no-store' : 'default',
@@ -117,6 +122,35 @@ async function fetchFromAvailableEndpoint(forceFresh = false) {
     }
 
     throw lastError;
+}
+
+function ensureFullHistoryLoaded(forceFresh = false) {
+    if (!forceFresh && hasHydratedFullHistory) {
+        return Promise.resolve();
+    }
+
+    if (fullHistoryRequest) {
+        return fullHistoryRequest;
+    }
+
+    fullHistoryRequest = (async function () {
+        try {
+            const payload = await fetchFromAvailableEndpoint(FULL_NEWS_LIMIT, forceFresh);
+            const fullNews = Array.isArray(payload && payload.data) ? payload.data : Array.isArray(payload) ? payload : [];
+
+            if (fullNews.length > allNews.length) {
+                applyNewsPayload(payload);
+            }
+
+            hasHydratedFullHistory = true;
+        } catch (error) {
+            console.error('Error loading full news history:', error);
+        } finally {
+            fullHistoryRequest = null;
+        }
+    })();
+
+    return fullHistoryRequest;
 }
 
 function applyNewsPayload(payload) {
@@ -249,6 +283,10 @@ function setupFilterToggle() {
         filtersPanel.setAttribute('aria-hidden', expanded ? 'false' : 'true');
         filterToggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
         filterToggle.textContent = expanded ? 'Cerrar filtro' : 'Filtrar fecha';
+
+        if (expanded) {
+            ensureFullHistoryLoaded(false);
+        }
 
         if (!expanded) {
             toggleMonthYearPicker(false);
@@ -1005,8 +1043,11 @@ function renderNews(news) {
 }
 
 function createCardMarkup(item) {
+    const imageCandidates = utils.buildImageSourceCandidates(item.image);
+    const imageSrc = imageCandidates.length > 0 ? imageCandidates[0] : '';
+    const proxyCandidates = imageCandidates.join('|');
     const imageMarkup = item.image
-        ? `<img class="news-card__image" src="${utils.escapeAttribute(item.image)}" alt="${utils.escapeAttribute(item.title)}" loading="lazy">`
+        ? `<img class="news-card__image" src="${utils.escapeAttribute(imageSrc)}" alt="${utils.escapeAttribute(item.title)}" loading="lazy" data-proxy-candidates="${utils.escapeAttribute(proxyCandidates)}" data-proxy-index="0" onerror="window.NewsPortalUtils.handleImageLoadError(this)">`
         : `<div class="news-card__image news-card__image--placeholder" aria-hidden="true">ABI</div>`;
 
     const detailUrl = buildDetailUrl(item);
@@ -1094,9 +1135,19 @@ function setupAutoRefresh() {
 
 async function fetchAndRefreshNews() {
     try {
-        const payload = await fetchFromAvailableEndpoint(true);
+        const payload = hasHydratedFullHistory
+            ? await fetchFromAvailableEndpoint(FULL_NEWS_LIMIT, true)
+            : await fetchFromAvailableEndpoint(FAST_NEWS_LIMIT, true);
+
         applyNewsPayload(payload);
-        cacheNewsPayload(payload);
+        cacheNewsPayload({
+            data: Array.isArray(payload && payload.data) ? payload.data.slice(0, FAST_NEWS_LIMIT) : [],
+            updated_at: payload && payload.updated_at ? payload.updated_at : null,
+        });
+
+        if (!hasHydratedFullHistory) {
+            ensureFullHistoryLoaded(true);
+        }
     } catch (error) {
         console.error('Error refreshing news:', error);
     }
@@ -1106,12 +1157,12 @@ function setupBackToTop() {
     utils.setupBackToTop(backToTopButton);
 }
 
-function resolveNewsLimit() {
+function resolveFastNewsLimit() {
     const rawLimit = shell && shell.dataset ? Number(shell.dataset.maxNewsItems) : NaN;
 
     if (!Number.isFinite(rawLimit) || rawLimit <= 0) {
         return 60;
     }
 
-    return Math.floor(rawLimit);
+    return Math.min(Math.floor(rawLimit), API_MAX_NEWS_LIMIT);
 }

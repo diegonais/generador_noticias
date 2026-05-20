@@ -31,25 +31,30 @@ if ($identifier !== null && $identifier !== '' && !$hasDateFilter) {
 }
 
 $effectiveLimit = $limit ?? $container->config()->maxNewsItems();
+$localQuickLimit = $container->config()->maxNewsItems();
 
 if (!$hasDateFilter) {
     if ($effectiveLimit <= 0) {
-        $effectiveLimit = $container->config()->maxNewsItems();
+        $effectiveLimit = $localQuickLimit;
     }
 
-    $localItems = $container->jsonNewsRepository()->findLatest($effectiveLimit);
+    // Mantiene la respuesta rapida local para portada (limites cortos),
+    // pero permite pedir historial amplio desde Supabase cuando se solicita un limite mayor.
+    if ($effectiveLimit <= $localQuickLimit) {
+        $localItems = $container->jsonNewsRepository()->findLatest($effectiveLimit);
 
-    if ($localItems !== []) {
-        JsonResponder::send([
-            'success' => true,
-            'count' => count($localItems),
-            'updated_at' => $container->jsonNewsRepository()->latestUpdatedAt(),
-            'data' => array_map(
-                static fn ($item): array => $item->toArray(),
-                $localItems,
-            ),
-        ]);
-        exit;
+        if ($localItems !== []) {
+            JsonResponder::send([
+                'success' => true,
+                'count' => count($localItems),
+                'updated_at' => $container->jsonNewsRepository()->latestUpdatedAt(),
+                'data' => array_map(
+                    static fn ($item): array => $item->toArray(),
+                    $localItems,
+                ),
+            ]);
+            exit;
+        }
     }
 }
 
